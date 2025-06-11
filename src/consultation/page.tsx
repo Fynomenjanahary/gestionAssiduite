@@ -1,59 +1,75 @@
-import { useState, useMemo } from "react"
-import { ArrowLeft, Search, Filter, Download, Users } from "lucide-react"
-
-// Données mockées des étudiants
-const students = [
-  { id: "001", name: "Alice Martin", level: "L1", points: 15, lastActivity: "2024-01-15", status: "active" },
-  { id: "002", name: "Bob Dupont", level: "L2", points: -3, lastActivity: "2024-01-14", status: "warning" },
-  { id: "003", name: "Claire Bernard", level: "L3", points: 22, lastActivity: "2024-01-15", status: "active" },
-  { id: "004", name: "David Moreau", level: "M1", points: 8, lastActivity: "2024-01-13", status: "active" },
-  { id: "005", name: "Emma Rousseau", level: "M2", points: -5, lastActivity: "2024-01-12", status: "critical" },
-  { id: "006", name: "François Leroy", level: "L1", points: 12, lastActivity: "2024-01-15", status: "active" },
-  { id: "007", name: "Gabrielle Simon", level: "L2", points: 18, lastActivity: "2024-01-14", status: "active" },
-  { id: "008", name: "Henri Blanc", level: "L3", points: -1, lastActivity: "2024-01-13", status: "warning" },
-  { id: "009", name: "Isabelle Petit", level: "M1", points: 25, lastActivity: "2024-01-15", status: "active" },
-  { id: "010", name: "Julien Roux", level: "M2", points: 7, lastActivity: "2024-01-14", status: "active" },
-]
+import { useState, useEffect, useMemo } from "react"
+import { ArrowLeft, Search, Download, Users, Filter } from "lucide-react"
+import type { Student } from "./types"
 
 export default function ConsultationPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [levelFilter, setLevelFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [sortBy, setSortBy] = useState("name")
+  const [searchTerm, setSearchTerm] = useState<string>("")
+  const [niveauFilter, setNiveauFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [sortBy, setSortBy] = useState<string>("nom")
+
+  const [students, setStudents] = useState<Student[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("http://localhost:8000/api/display")
+      .then((res) => {
+        if (!res.ok) throw new Error("Erreur serveur")
+        return res.json()
+      })
+      .then((data: Student[]) => {
+        setStudents(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        setError(err.message)
+        setLoading(false)
+      })
+  }, [])
 
   const filteredAndSortedStudents = useMemo(() => {
     const filtered = students.filter((student) => {
       const matchesSearch =
-        student.name.toLowerCase().includes(searchTerm.toLowerCase()) || student.id.includes(searchTerm)
-      const matchesLevel = levelFilter === "all" || student.level === levelFilter
-      const matchesStatus = statusFilter === "all" || student.status === statusFilter
+        student.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.id.toString().includes(searchTerm)
 
-      return matchesSearch && matchesLevel && matchesStatus
+      const matchesNiveau =
+        niveauFilter === "all" || student.niveau === niveauFilter
+
+      const matchesStatus =
+        statusFilter === "all" || student.status === statusFilter
+
+      return matchesSearch && matchesNiveau && matchesStatus
     })
 
     return filtered.sort((a, b) => {
       switch (sortBy) {
         case "points":
           return b.points - a.points
-        case "level":
-          return a.level.localeCompare(b.level)
+        case "niveau":
+          return a.niveau.localeCompare(b.niveau)
         case "lastActivity":
           return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
         default:
-          return a.name.localeCompare(b.name)
+          return a.nom.localeCompare(b.nom)
       }
     })
-  }, [searchTerm, levelFilter, statusFilter, sortBy])
+  }, [searchTerm, niveauFilter, statusFilter, sortBy, students])
 
-  const getStatusBadge = (status:string, points:number) => {
-    if (points >= 20) return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Excellent</span>
-    if (points >= 10) return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Bon</span>
-    if (points >= 0) return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Moyen</span>
-    if (points >= -5) return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">Attention</span>
+  const getStatusBadge = (status: string, points: number) => {
+    if (points >= 20)
+      return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Excellent</span>
+    if (points >= 10)
+      return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Bon</span>
+    if (points >= 0)
+      return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Moyen</span>
+    if (points >= -5)
+      return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">Attention</span>
     return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Critique</span>
   }
 
-  const getPointsColor = (points:number) => {
+  const getPointsColor = (points: number) => {
     if (points >= 10) return "text-green-600 font-semibold"
     if (points >= 0) return "text-blue-600 font-semibold"
     return "text-red-600 font-semibold"
@@ -61,6 +77,14 @@ export default function ConsultationPage() {
 
   const handleGoBack = () => {
     window.history.back()
+  }
+
+  if (loading) {
+    return <div className="p-8 text-center text-blue-700 font-semibold">Chargement des données...</div>
+  }
+
+  if (error) {
+    return <div className="p-8 text-center text-red-600 font-semibold">Erreur : {error}</div>
   }
 
   return (
@@ -164,8 +188,8 @@ export default function ConsultationPage() {
               </div>
 
               <select 
-                value={levelFilter} 
-                onChange={(e) => setLevelFilter(e.target.value)}
+                value={niveauFilter} 
+                onChange={(e) => setNiveauFilter(e.target.value)}
                 className="px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">Tous les niveaux</option>
@@ -192,9 +216,9 @@ export default function ConsultationPage() {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="name">Nom</option>
+                <option value="nom">Nom</option>
                 <option value="points">Points</option>
-                <option value="level">Niveau</option>
+                <option value="niveau">Niveau</option>
                 <option value="lastActivity">Dernière activité</option>
               </select>
             </div>
@@ -224,10 +248,10 @@ export default function ConsultationPage() {
                   {filteredAndSortedStudents.map((student) => (
                     <tr key={student.id} className="border-b border-blue-100 hover:bg-blue-50/50">
                       <td className="font-mono text-blue-700 p-3">{student.id}</td>
-                      <td className="font-medium text-blue-900 p-3">{student.name}</td>
+                      <td className="font-medium text-blue-900 p-3">{student.nom}</td>
                       <td className="p-3">
                         <span className="px-2 py-1 text-xs font-medium border border-blue-300 text-blue-700 rounded-full">
-                          {student.level}
+                          {student.niveau}
                         </span>
                       </td>
                       <td className={`p-3 ${getPointsColor(student.points)}`}>
