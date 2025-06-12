@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -6,28 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, QrCode, Award, AlertTriangle, CheckCircle } from "lucide-react"
 import { QRScannerReal as QRScanner} from "@/components/ui/qr-scanner-real"
-
-const reasons = [
-  { id: "presence", label: "Présence en cours", type: "bonus", points: 2 },
-  { id: "participation", label: "Participation active", type: "bonus", points: 3 },
-  { id: "aide", label: "Aide aux autres étudiants", type: "bonus", points: 1 },
-  { id: "absence", label: "Absence non justifiée", type: "malus", points: -2 },
-  { id: "retard", label: "Retard répété", type: "malus", points: -1 },
-  { id: "comportement", label: "Comportement inapproprié", type: "malus", points: -3 },
-]
+import type { Reason,Student } from "@/consultation/types"
 
 // Base de données simulée des étudiants
-const studentsDatabase = {
-  STU001: { id: "STU001", name: "Alice Martin", level: "L1" },
-  STU002: { id: "STU002", name: "Bob Dupont", level: "L2" },
-  STU003: { id: "STU003", name: "Claire Bernard", level: "L3" },
-  STU004: { id: "STU004", name: "David Moreau", level: "M1" },
-  STU005: { id: "STU005", name: "Emma Rousseau", level: "M2" },
-  "001": { id: "001", name: "Alice Martin", level: "L1" },
-  "002": { id: "002", name: "Bob Dupont", level: "L2" },
-  "003": { id: "003", name: "Claire Bernard", level: "L3" },
-}
-
 interface Attribution {
   studentId: string
   studentName: string
@@ -40,12 +21,48 @@ interface Attribution {
 }
 
 export default function AttributionPage() {
-  const [selectedReason, setSelectedReason] = useState("")
+  const [selectedReason, setSelectedReason] = useState<string | undefined>()
+  const [reasons, setReasons] = useState<Reason[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
   const [showScanner, setShowScanner] = useState(false)
   const [lastAttribution, setLastAttribution] = useState<Attribution | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
 
-  const selectedReasonData = reasons.find((r) => r.id === selectedReason)
+  const selectedReasonData = reasons.find((r) => String(r.id) === selectedReason)
+
+  const [studentsDatabase, setStudents] = useState<Student[]>([])
+
+
+useEffect(() => {
+    fetch("http://localhost:8000/api/display_raison")
+      .then((res) => {
+        if (!res.ok) throw new Error("Erreur serveur")
+        return res.json()
+      })
+      .then((data: Reason[]) => {
+        setReasons(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        setError(err.message)
+        setLoading(false)
+      })
+
+      fetch("http://localhost:8000/api/display")
+      .then((res) => {
+        if (!res.ok) throw new Error("Erreur serveur")
+        return res.json()
+      })
+      .then((data: Student[]) => {
+        setStudents(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        setError(err.message)
+        setLoading(false)
+      })
+  }, [])
 
   // Simulation du scan QR code (remplacez par votre composant QR scanner)
   const handleQRScan = (qrData: string) => {
@@ -58,18 +75,20 @@ export default function AttributionPage() {
     }
 
     // Chercher l'étudiant dans la base de données
-    const student = studentsDatabase[qrData as keyof typeof studentsDatabase]
+    const student = studentsDatabase.find((s) => s.id === Number(qrData))
 
     if (!student) {
       setScanError(`Étudiant non trouvé pour l'ID: ${qrData}`)
       return
     }
+    
+    // Envoyer dans la base de données
 
     // Créer l'attribution
     const attribution: Attribution = {
-      studentId: student.id,
-      studentName: student.name,
-      studentLevel: student.level,
+      studentId: String(student.id),
+      studentName: student.nom,
+      studentLevel: student.niveau,
       qrData: qrData,
       reason: selectedReasonData.label,
       points: selectedReasonData.points,
@@ -84,7 +103,7 @@ export default function AttributionPage() {
 
     setLastAttribution(attribution)
     setShowScanner(false)
-    setSelectedReason("")
+    setSelectedReason(undefined) // Réinitialiser la sélection de raison
   }
 
   // Fonction de simulation pour tester
@@ -130,7 +149,7 @@ export default function AttributionPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {reasons.map((reason) => (
-                    <SelectItem key={reason.id} value={reason.id}>
+                    <SelectItem key={reason.id} value={String(reason.id)}>
                       <div className="flex items-center justify-between w-full">
                         <span>{reason.label}</span>
                         <Badge variant={reason.type === "bonus" ? "default" : "destructive"} className="ml-2">

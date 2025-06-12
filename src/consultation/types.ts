@@ -8,4 +8,11 @@ export interface Student {
     points: number;
     status: string;
   }
+
+  export interface Reason {
+    id: number;
+    label: string;
+    type: string;
+    points: number;
+  }
   

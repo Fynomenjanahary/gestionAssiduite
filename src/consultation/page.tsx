@@ -260,7 +260,7 @@ export default function ConsultationPage() {
                       </td>
                       <td className="p-3">{getStatusBadge(student.status, student.points)}</td>
                       <td className="text-blue-700 p-3">
-                        {new Date(student.lastActivity).toLocaleDateString("fr-FR")}
+                        {new Date(student.lastActivity).toLocaleString("fr-FR")}
                       </td>
                     </tr>
                   ))}
