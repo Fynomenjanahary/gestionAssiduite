@@ -10,9 +10,11 @@ import type { Reason,Student } from "@/consultation/types"
 
 // Base de données simulée des étudiants
 interface Attribution {
-  studentId: string
+  id_etudiant: number
+  id_enseignement : number
   studentName: string
   studentLevel: string
+  id_raison: number
   qrData: string
   reason: string
   points: number
@@ -86,9 +88,11 @@ useEffect(() => {
 
     // Créer l'attribution
     const attribution: Attribution = {
-      studentId: String(student.id),
+      id_etudiant: student.id,
+      id_enseignement: 5,
       studentName: student.nom,
       studentLevel: student.niveau,
+      id_raison: selectedReasonData.id,
       qrData: qrData,
       reason: selectedReasonData.label,
       points: selectedReasonData.points,
@@ -99,6 +103,20 @@ useEffect(() => {
     console.log("Attribution créée:", attribution)
 
     // Ici vous pourriez sauvegarder en base de données
+
+    fetch('http://localhost:8000/api/attribuer_point', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(attribution) // ← ici on transforme en JSON
+    })
+      .then(response => response.json())
+      .then(data => console.log('Réponse de l’API:', data))
+      .catch(error => console.error('Erreur:', error));
+    
+
     // await saveAttribution(attribution)
 
     setLastAttribution(attribution)
